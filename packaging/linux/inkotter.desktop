@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=InkOtter
+Comment=Labels, unleashed.
+GenericName=Label Printer
+Exec=inkotter-gui %F
+Icon=inkotter
+Terminal=false
+StartupNotify=true
+Categories=Graphics;Utility;
+Keywords=label;printer;bluetooth;thermal;svg;
+MimeType=image/svg+xml;image/png;image/jpeg;
