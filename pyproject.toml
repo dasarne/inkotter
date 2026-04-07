@@ -11,7 +11,13 @@ requires-python = ">=3.11"
 dependencies = [
   "Pillow>=10.0",
   "CairoSVG>=2.7",
+  "PySide6>=6.7",
 ]
+
+[project.urls]
+Homepage = "https://github.com/dasarne/inkotter"
+Repository = "https://github.com/dasarne/inkotter"
+Issues = "https://github.com/dasarne/inkotter/issues"
 
 [project.scripts]
 inkotter = "inkotter.app.cli:main"

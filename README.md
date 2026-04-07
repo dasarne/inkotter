@@ -7,9 +7,11 @@
 > **Labels, unleashed.**  
 > **Open printing for closed devices.**
 
+Repository: <https://github.com/dasarne/inkotter>
+
 InkOtter brings label printing to Linux for proprietary Bluetooth label printers that normally only work with vendor apps.
 
-The project is designed around a small reusable printing core, device-specific drivers, and user-facing frontends such as a CLI and a desktop GUI.
+The project is designed around a small reusable printing core, device-specific drivers, and user-facing frontends such as a CLI and a Qt desktop GUI.
 
 ## Current Status
 
@@ -24,11 +26,11 @@ The current implementation supports:
 - document-faithful wide label printing
 - actual-size SVG printing
 - a minimal CLI
-- a first desktop GUI prototype
+- a first Qt desktop GUI
 
 ## Installation
 
-InkOtter is a normal Python package.
+For detailed Linux installation and desktop integration instructions, see [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ### Install From A Local Checkout
 
@@ -52,6 +54,7 @@ InkOtter currently depends on:
 - Python `3.11+`
 - `Pillow`
 - `CairoSVG`
+- `PySide6`
 
 If `CairoSVG` is not available, SVG rendering can fall back to a local `inkscape` executable.
 
@@ -87,6 +90,17 @@ That installs:
 
 - `~/.local/share/icons/hicolor/scalable/apps/inkotter.svg`
 - `~/.local/share/applications/inkotter.desktop`
+
+The installer writes a launcher that prefers:
+
+- `./.venv/bin/inkotter-gui` from the current checkout
+- otherwise `inkotter-gui` from your `PATH`
+
+If KDE does not show the launcher immediately, run:
+
+```bash
+kbuildsycoca6
+```
 
 ## How To Use It
 
@@ -158,6 +172,8 @@ If your printer is not supported yet, the long-term plan is that you can add:
 - protocol facts
 - transport specifics where necessary
 
+For contribution workflow and driver contribution guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Known Scope
 
 The first supported device family uses a verified T15-like image path and grouped `AA BB` transfers for wide labels.
@@ -170,6 +186,13 @@ Many label printers are locked behind proprietary mobile apps.
 
 InkOtter exists to make those devices usable from Linux and open desktop systems without depending on vendor software.
 
+The practical motivation is simple:
+
+- many vendor tools are phone-only even though label design and file preparation are usually better on a desktop
+- those apps often want unnecessary permissions such as location access before Bluetooth use
+- desktop workflows with SVG, PNG, file management, and keyboard-driven tooling are simply better suited for serious label work
+- printing should not require handing document flow and device access to a closed mobile app
+
 ## Contributing
 
 Contributions are welcome, especially:
@@ -179,6 +202,10 @@ Contributions are welcome, especially:
 - rendering improvements
 - packaging and desktop integration
 - UI improvements
+
+Driver contributions are explicitly welcome. InkOtter is intended to grow by adding clean device facts and small device-specific profiles instead of importing historical reverse-engineering clutter into the product core.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project Vision
 

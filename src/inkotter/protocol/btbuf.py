@@ -105,6 +105,9 @@ def build_t15_btbuf_job(
             page_flags = protocol.single_page_flags
         else:
             page_flags = protocol.final_page_flags if span.is_final else protocol.continue_page_flags
+        right_margin = raster.right_margin
+        if total_pages > 1 and span.is_final:
+            right_margin += raster.final_page_extra_right_margin_px
         page_data = _pack_canvas_columns_lsb(
             rendered.monochrome_image,
             bytes_per_column=raster.bytes_per_column,
@@ -119,7 +122,7 @@ def build_t15_btbuf_job(
             page_flags=page_flags,
             data_offset=raster.btbuf_data_offset,
             left_margin=raster.first_page_left_margin if span.index == 0 else raster.later_page_left_margin,
-            right_margin=raster.right_margin,
+            right_margin=right_margin,
         )
         pages.append(
             BtbufPage(

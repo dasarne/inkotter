@@ -34,6 +34,13 @@ class RasterProfile:
     multi_page_supported: bool = False
     fitted_content_height_px: int | None = None
     actual_size_single_page_max_width_mm: float | None = None
+    single_page_extra_right_margin_px: int = 0
+    final_page_extra_right_margin_px: int = 0
+    physical_left_cut_margin_px: int = 0
+    physical_top_inset_px: int = 0
+    actual_size_svg_right_bleed_px: int = 0
+    fit_to_label_print_x_offset_px: int = 0
+    fit_to_label_svg_print_x_offset_px: int = 0
 
 
 @dataclass(frozen=True)
