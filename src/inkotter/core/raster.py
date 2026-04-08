@@ -22,7 +22,6 @@ class PageSpan:
 class RasterPlan:
     head_height_px: int
     target_canvas_width_px: int
-    raster_pixels_per_mm: float
     place_top_left: bool
     physical_top_inset_px: int
     fit_to_content_height_px: int | None
@@ -61,11 +60,7 @@ def build_raster_plan(document: DocumentSpec, plan: LayoutPlan, device: DevicePr
 
     if plan.mode == LayoutMode.FIT_TO_LABEL:
         fitted_content_height_px = raster.fitted_content_height_px or raster.head_height_px
-        visible_width_px = (
-            max(1, raster.page_width_px - raster.single_page_extra_right_margin_px)
-            if document.format != DocumentFormat.SVG
-            else raster.page_width_px
-        )
+        visible_width_px = raster.single_page_visible_width_px(document.format)
         fitted_width_px = _fit_scaled_width(
             document_width_px,
             document_height_px,
@@ -102,9 +97,8 @@ def build_raster_plan(document: DocumentSpec, plan: LayoutPlan, device: DevicePr
         return RasterPlan(
             head_height_px=raster.head_height_px,
             target_canvas_width_px=target_canvas_width_px,
-            raster_pixels_per_mm=plan.svg_pixels_per_mm,
             place_top_left=place_top_left,
-            physical_top_inset_px=raster.physical_top_inset_px,
+            physical_top_inset_px=raster.visible_area_top_inset_px(),
             fit_to_content_height_px=fit_to_content_height_px,
             fit_to_content_width_px=fit_to_content_width_px,
             page_spans=page_spans,
@@ -134,9 +128,8 @@ def build_raster_plan(document: DocumentSpec, plan: LayoutPlan, device: DevicePr
     return RasterPlan(
         head_height_px=raster.head_height_px,
         target_canvas_width_px=target_canvas_width_px,
-        raster_pixels_per_mm=plan.svg_pixels_per_mm,
         place_top_left=plan.should_top_left_anchor,
-        physical_top_inset_px=raster.physical_top_inset_px,
+        physical_top_inset_px=raster.visible_area_top_inset_px(),
         fit_to_content_height_px=None,
         fit_to_content_width_px=None,
         page_spans=tuple(spans),

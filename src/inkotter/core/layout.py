@@ -18,8 +18,6 @@ class LayoutMode(str, Enum):
 @dataclass(frozen=True)
 class LayoutPlan:
     mode: LayoutMode
-    should_prepare: bool
-    should_auto_split_pages: bool
     should_top_left_anchor: bool
     should_trim_first_page_left: bool
     svg_pixels_per_mm: float
@@ -45,12 +43,10 @@ def choose_layout_plan(document: DocumentSpec, device: DeviceProfile, no_scale: 
         if no_scale:
             return LayoutPlan(
                 mode=LayoutMode.ACTUAL_SIZE,
-                should_prepare=False,
-                should_auto_split_pages=width_mm > (raster.actual_size_single_page_max_width_mm or 0.0),
                 should_top_left_anchor=True,
                 should_trim_first_page_left=False,
                 svg_pixels_per_mm=raster.pixels_per_mm,
-                svg_right_bleed_px=raster.actual_size_svg_right_bleed_px,
+                svg_right_bleed_px=raster.actual_size_svg_bleed_px(),
                 reason="explicit actual-size SVG document mode",
             )
         if is_long_label_candidate_mm(width_mm, height_mm):
@@ -60,18 +56,14 @@ def choose_layout_plan(document: DocumentSpec, device: DeviceProfile, no_scale: 
             ):
                 return LayoutPlan(
                     mode=LayoutMode.WIDE_ACTUAL_SIZE,
-                    should_prepare=False,
-                    should_auto_split_pages=True,
                     should_top_left_anchor=True,
                     should_trim_first_page_left=False,
                     svg_pixels_per_mm=raster.pixels_per_mm,
-                    svg_right_bleed_px=raster.actual_size_svg_right_bleed_px,
+                    svg_right_bleed_px=raster.actual_size_svg_bleed_px(),
                     reason="wide SVG with explicit physical size exceeds the single-page actual-size range",
                 )
             return LayoutPlan(
                 mode=LayoutMode.FIT_TO_LABEL,
-                should_prepare=False,
-                should_auto_split_pages=False,
                 should_top_left_anchor=False,
                 should_trim_first_page_left=True,
                 svg_pixels_per_mm=12.0,
@@ -81,8 +73,6 @@ def choose_layout_plan(document: DocumentSpec, device: DeviceProfile, no_scale: 
 
     return LayoutPlan(
         mode=LayoutMode.FIT_TO_LABEL,
-        should_prepare=True,
-        should_auto_split_pages=False,
         should_top_left_anchor=False,
         should_trim_first_page_left=True,
         svg_pixels_per_mm=raster.pixels_per_mm,

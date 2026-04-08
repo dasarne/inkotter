@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from inkotter.core.document import DocumentFormat
+
 
 @dataclass(frozen=True)
 class BluetoothDiscoveryHints:
@@ -20,7 +22,14 @@ class BluetoothDiscoveryHints:
 
 @dataclass(frozen=True)
 class RasterProfile:
-    """Raster semantics required to materialize device-ready pages."""
+    """Raster semantics required to materialize device-ready pages.
+
+    The fields intentionally mix three effect classes:
+    - visible-area facts for preview and physical head coverage
+    - printer-ready placement offsets
+    - protocol page margins and packing details
+    Helper methods below expose those classes explicitly at call sites.
+    """
 
     pixels_per_mm: float
     head_height_px: int
@@ -31,7 +40,6 @@ class RasterProfile:
     first_page_left_margin: int = 1
     later_page_left_margin: int = 1
     right_margin: int = 1
-    multi_page_supported: bool = False
     fitted_content_height_px: int | None = None
     actual_size_single_page_max_width_mm: float | None = None
     single_page_extra_right_margin_px: int = 0
@@ -41,6 +49,35 @@ class RasterProfile:
     actual_size_svg_right_bleed_px: int = 0
     fit_to_label_print_x_offset_px: int = 0
     fit_to_label_svg_print_x_offset_px: int = 0
+
+    def visible_area_left_cut_margin_px(self) -> int:
+        return max(0, self.physical_left_cut_margin_px)
+
+    def visible_area_top_inset_px(self) -> int:
+        return max(0, self.physical_top_inset_px)
+
+    def actual_size_svg_bleed_px(self) -> int:
+        return max(0, self.actual_size_svg_right_bleed_px)
+
+    def fit_to_label_output_x_offset_px(self, document_format: DocumentFormat) -> int:
+        offset_px = self.fit_to_label_print_x_offset_px
+        if document_format == DocumentFormat.SVG:
+            offset_px += self.fit_to_label_svg_print_x_offset_px
+        return offset_px
+
+    def single_page_visible_width_px(self, document_format: DocumentFormat) -> int:
+        if document_format == DocumentFormat.SVG:
+            return self.page_width_px
+        return max(1, self.page_width_px - self.single_page_extra_right_margin_px)
+
+    def protocol_left_margin_px(self, page_index: int) -> int:
+        return self.first_page_left_margin if page_index == 0 else self.later_page_left_margin
+
+    def protocol_right_margin_px(self, *, is_final: bool, total_pages: int) -> int:
+        right_margin = self.right_margin
+        if total_pages > 1 and is_final:
+            right_margin += self.final_page_extra_right_margin_px
+        return right_margin
 
 
 @dataclass(frozen=True)

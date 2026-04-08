@@ -38,7 +38,29 @@ Responsibility:
 - define source raster size, placement on the device canvas, and monochrome policy
 - stay protocol-neutral: no `btbuf`, no framing, no transport
 
-### 5. Protocol
+### 5. Canvas Variants
+
+Responsibility:
+
+- build the three explicit post-render canvas stages
+- keep preview-visible and printer-ready geometry separate
+- make device-specific output shifts visible before protocol materialization
+
+Current stages:
+
+- `rendered_canvas`: direct render result from `RenderPlan`
+- `preview_canvas`: visible-area adjusted canvas used by the GUI/source preview
+- `printer_ready_canvas`: final canvas used for `btbuf` packing
+
+### 6. Preview
+
+Responsibility:
+
+- derive visible preview surfaces from the explicit canvas stages
+- crop top inset / left cut area consistently
+- materialize the graphic and physical strip previews without changing print geometry
+
+### 7. Protocol
 
 Responsibility:
 
@@ -46,7 +68,7 @@ Responsibility:
 - compress payloads
 - build frame sequences
 
-### 6. Transport
+### 8. Transport
 
 Responsibility:
 
@@ -54,7 +76,7 @@ Responsibility:
 - open RFCOMM
 - send frames and collect results
 
-### 7. App Frontends
+### 9. App Frontends
 
 Responsibility:
 
@@ -78,8 +100,15 @@ For the first kernel step, the device layer should already own facts such as:
 - bytes per column
 - `btbuf` data offset
 - single-page and multi-page width semantics
+- visible-area facts such as top inset and left cut margin
+- printer-ready output offsets
+- protocol page margins
 - Bluetooth discovery hints
 - frame command identities for image jobs
+
+The current `RasterProfile` still contains these effect classes in one profile
+object, but call sites should access them through explicit helper methods so the
+meaning stays visible in code.
 
 ## Canonical Planning Flow
 
@@ -87,5 +116,13 @@ For the first kernel step, the device layer should already own facts such as:
 2. `LayoutPlan`
 3. `RasterPlan`
 4. `RenderPlan`
-5. protocol materialization
-6. transport send
+5. `CanvasVariants`
+6. preview surface / strip materialization
+7. protocol materialization
+8. transport send
+
+## Current Non-Goals
+
+- No speculative hardware calibration search during normal rendering.
+- No separate preview-only geometry path that diverges from printer-ready placement.
+- No large abstraction layers around a single supported printer family.

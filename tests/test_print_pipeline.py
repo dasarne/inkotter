@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw
 
+from inkotter.core.document import DocumentFormat
 from inkotter.core.service import build_physical_print_preview, build_preview_images, prepare_print_job
 from inkotter.devices import KATASYMBOL_E10_PROFILE
 
@@ -63,29 +64,48 @@ class PrintPipelineTests(unittest.TestCase):
                     previews = build_preview_images(job)
 
                     expected_graphic = _visible_image(
-                        job.canvas.grayscale_image,
-                        job.device.raster.physical_top_inset_px,
+                        job.preview_canvas.grayscale_image,
+                        job.device.raster.visible_area_top_inset_px(),
                     )
                     expected_graphic = _crop_left_margin(
                         expected_graphic,
-                        job.device.raster.physical_left_cut_margin_px,
+                        job.device.raster.visible_area_left_cut_margin_px(),
                     )
                     expected_physical = _visible_image(
-                        job.canvas.monochrome_image,
-                        job.device.raster.physical_top_inset_px,
+                        job.printer_ready_canvas.monochrome_image,
+                        job.device.raster.visible_area_top_inset_px(),
                     )
                     expected_physical = _crop_left_margin(
                         expected_physical,
-                        job.device.raster.physical_left_cut_margin_px,
+                        job.device.raster.visible_area_left_cut_margin_px(),
                     )
 
                     self.assertEqual(previews.graphic_image.size, previews.physical_print_image.size)
-                    self.assertEqual(_non_white_bbox(previews.graphic_image), _non_white_bbox(previews.physical_print_image))
                     self.assertEqual(previews.graphic_image.tobytes(), expected_graphic.tobytes())
                     self.assertEqual(previews.physical_print_image.tobytes(), expected_physical.tobytes())
                     self.assertEqual(
                         build_physical_print_preview(job).tobytes(),
                         previews.physical_print_image.tobytes(),
+                    )
+
+    def test_physical_preview_tracks_printer_ready_offset_instead_of_preview_canvas(self) -> None:
+        for suffix in ("png", "svg"):
+            with self.subTest(document_type=suffix):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    document_path = self._create_fixture(Path(tmpdir), suffix)
+                    job = prepare_print_job(document_path, KATASYMBOL_E10_PROFILE)
+                    previews = build_preview_images(job)
+
+                    self.assertNotEqual(job.preview_canvas.plan.placement.x_px, job.printer_ready_canvas.plan.placement.x_px)
+                    self.assertEqual(
+                        _non_white_bbox(previews.physical_print_image),
+                        _non_white_bbox(_crop_left_margin(
+                            _visible_image(
+                                job.printer_ready_canvas.monochrome_image,
+                                job.device.raster.visible_area_top_inset_px(),
+                            ),
+                            job.device.raster.visible_area_left_cut_margin_px(),
+                        )),
                     )
 
     def test_btbuf_payload_reconstructs_exact_printer_ready_monochrome_canvas(self) -> None:
@@ -99,7 +119,7 @@ class PrintPipelineTests(unittest.TestCase):
                     self.assertEqual(job.raster.page_spans[0].trim_left_px, 0)
 
                     reconstructed = _reconstruct_monochrome_from_btbuf(job)
-                    self.assertEqual(reconstructed.tobytes(), job.print_canvas.monochrome_image.tobytes())
+                    self.assertEqual(reconstructed.tobytes(), job.printer_ready_canvas.monochrome_image.tobytes())
                     self.assertEqual(job.btbuf_job.pages[0].btbuf[8:10], b"\x00\x00")
 
     def test_single_page_printer_ready_content_is_horizontally_balanced_in_visible_area(self) -> None:
@@ -109,9 +129,9 @@ class PrintPipelineTests(unittest.TestCase):
                     document_path = self._create_fixture(Path(tmpdir), suffix)
                     job = prepare_print_job(document_path, KATASYMBOL_E10_PROFILE)
 
-                    placement = job.canvas.plan.placement
-                    left_margin = placement.x_px - job.device.raster.physical_left_cut_margin_px
-                    right_margin = job.canvas.plan.canvas.width_px - (placement.x_px + placement.width_px)
+                    placement = job.preview_canvas.plan.placement
+                    left_margin = placement.x_px - job.device.raster.visible_area_left_cut_margin_px()
+                    right_margin = job.preview_canvas.plan.canvas.width_px - (placement.x_px + placement.width_px)
                     self.assertEqual(left_margin, right_margin)
 
     def test_svg_fit_to_label_uses_device_specific_print_offset(self) -> None:
@@ -119,10 +139,9 @@ class PrintPipelineTests(unittest.TestCase):
             document_path = self._create_fixture(Path(tmpdir), "svg")
             job = prepare_print_job(document_path, KATASYMBOL_E10_PROFILE)
             self.assertEqual(
-                job.print_canvas.plan.placement.x_px,
-                job.canvas.plan.placement.x_px
-                + KATASYMBOL_E10_PROFILE.raster.fit_to_label_print_x_offset_px
-                + KATASYMBOL_E10_PROFILE.raster.fit_to_label_svg_print_x_offset_px,
+                job.printer_ready_canvas.plan.placement.x_px,
+                job.preview_canvas.plan.placement.x_px
+                + KATASYMBOL_E10_PROFILE.raster.fit_to_label_output_x_offset_px(DocumentFormat.SVG),
             )
 
     def test_raster_fit_to_label_uses_device_print_offset(self) -> None:
@@ -130,9 +149,24 @@ class PrintPipelineTests(unittest.TestCase):
             document_path = self._create_fixture(Path(tmpdir), "png")
             job = prepare_print_job(document_path, KATASYMBOL_E10_PROFILE)
             self.assertEqual(
-                job.print_canvas.plan.placement.x_px,
-                job.canvas.plan.placement.x_px + KATASYMBOL_E10_PROFILE.raster.fit_to_label_print_x_offset_px,
+                job.printer_ready_canvas.plan.placement.x_px,
+                job.preview_canvas.plan.placement.x_px
+                + KATASYMBOL_E10_PROFILE.raster.fit_to_label_output_x_offset_px(DocumentFormat.PNG),
             )
+
+    def test_raster_profile_helpers_expose_effect_classes_explicitly(self) -> None:
+        raster = KATASYMBOL_E10_PROFILE.raster
+        self.assertEqual(raster.visible_area_left_cut_margin_px(), 0)
+        self.assertEqual(raster.visible_area_top_inset_px(), 1)
+        self.assertEqual(raster.actual_size_svg_bleed_px(), 12)
+        self.assertEqual(raster.single_page_visible_width_px(DocumentFormat.SVG), raster.page_width_px)
+        self.assertEqual(raster.single_page_visible_width_px(DocumentFormat.PNG), raster.page_width_px - 32)
+        self.assertEqual(raster.fit_to_label_output_x_offset_px(DocumentFormat.PNG), -4)
+        self.assertEqual(raster.fit_to_label_output_x_offset_px(DocumentFormat.SVG), -8)
+        self.assertEqual(raster.protocol_left_margin_px(0), 0)
+        self.assertEqual(raster.protocol_left_margin_px(1), 0)
+        self.assertEqual(raster.protocol_right_margin_px(is_final=False, total_pages=2), 1)
+        self.assertEqual(raster.protocol_right_margin_px(is_final=True, total_pages=2), 33)
 
     def _create_fixture(self, directory: Path, suffix: str) -> Path:
         if suffix == "png":

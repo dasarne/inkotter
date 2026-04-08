@@ -1,6 +1,12 @@
 """Katasymbol E10 profile facts.
 
 This profile intentionally encodes verified V1 facts as stable input for V2.
+
+Not every raster-related value has the same confidence level:
+- protocol packing values are treated as verified hardware/protocol facts
+- preview and printer-ready placement values are conservative operating values
+- conservative values should stay explicit and small in number until further
+  hardware verification justifies changing them
 """
 
 from inkotter.devices.base import (
@@ -58,6 +64,7 @@ KATASYMBOL_E10_PROFILE = DeviceProfile(
         needs_root_hint=True,
     ),
     raster=RasterProfile(
+        # Stable device geometry / protocol packing facts.
         pixels_per_mm=8.0,
         head_height_px=96,
         bytes_per_column=12,
@@ -67,15 +74,18 @@ KATASYMBOL_E10_PROFILE = DeviceProfile(
         first_page_left_margin=0,
         later_page_left_margin=0,
         right_margin=1,
-        multi_page_supported=True,
+        # Conservative everyday rendering defaults.
         fitted_content_height_px=88,
         actual_size_single_page_max_width_mm=39.0,
         single_page_extra_right_margin_px=32,
         final_page_extra_right_margin_px=32,
+        # Visible-area and printer-ready offsets.
+        # These are intentionally explicit because they are operational tuning
+        # values, not protocol facts.
         physical_left_cut_margin_px=0,
         physical_top_inset_px=1,
         actual_size_svg_right_bleed_px=12,
-        fit_to_label_print_x_offset_px=-4,
+        fit_to_label_print_x_offset_px=4,
         fit_to_label_svg_print_x_offset_px=-4,
     ),
     protocol=ProtocolProfile(
@@ -95,5 +105,6 @@ KATASYMBOL_E10_PROFILE = DeviceProfile(
         "Verified on Katasymbol E10 hardware and matching manufacturer captures.",
         "Wide labels use multiple AA BB pages rather than a separate image transport family.",
         "The practical everyday path uses the vendor-nearer T15 raster family.",
+        "Protocol packing values are treated as stable facts; preview and output offsets remain conservative operating assumptions.",
     ),
 )
