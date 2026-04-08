@@ -84,9 +84,13 @@ KATASYMBOL_E10_PROFILE = DeviceProfile(
         # values, not protocol facts.
         physical_left_cut_margin_px=0,
         physical_top_inset_px=1,
+        material_margin_left_px=37,
+        material_margin_right_px=37,
+        material_margin_top_px=14,
+        material_margin_bottom_px=14,
         actual_size_svg_right_bleed_px=12,
-        fit_to_label_print_x_offset_px=4,
-        fit_to_label_svg_print_x_offset_px=-4,
+        fit_to_label_print_x_offset_px=0,
+        fit_to_label_svg_print_x_offset_px=0,
     ),
     protocol=ProtocolProfile(
         transport_family="t15",

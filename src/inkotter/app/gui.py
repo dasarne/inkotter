@@ -1072,7 +1072,7 @@ class InkOtterWindow(QMainWindow):
     def _set_summary_text(self, text: str) -> None:
         self.summary_output.setPlainText(text)
 
-    def _render_preview_info_text(self, summary, physical_preview_width_px: int, right_margin_px: int) -> str:
+    def _render_preview_info_text(self, summary, physical_preview_width_px: int, physical_preview_height_px: int, right_margin_px: int) -> str:
         mode = self._selected_monochrome_strategy().value
         if self._selected_monochrome_strategy() == MonochromeStrategy.THRESHOLD:
             mode = f"{mode} {self._selected_threshold()}"
@@ -1082,7 +1082,7 @@ class InkOtterWindow(QMainWindow):
                 f"{self._t('summary.canvas')}: {summary.canvas_width_px}x{summary.canvas_height_px}px",
                 f"{self._t('summary.pages')}: {summary.page_count}",
                 f"{self._t('summary.rastering')}: {mode}",
-                f"{self._t('summary.strip')}: {physical_preview_width_px}x{summary.canvas_height_px}px",
+                f"{self._t('summary.strip')}: {physical_preview_width_px}x{physical_preview_height_px}px",
                 f"{self._t('summary.end_margin')}: {right_margin_px}px",
             )
         )
@@ -1226,7 +1226,12 @@ class InkOtterWindow(QMainWindow):
             previews = build_preview_images(job)
             return preview_generation, PreviewPayload(
                 summary_text=self._render_summary_text(summary),
-                preview_info_text=self._render_preview_info_text(summary, previews.strip_width_px, previews.right_margin_px),
+                preview_info_text=self._render_preview_info_text(
+                    summary,
+                    previews.strip_width_px,
+                    previews.strip_height_px,
+                    previews.right_margin_px,
+                ),
                 graphic_png=encode_preview_png(previews.graphic_image),
                 physical_print_png=encode_preview_png(previews.physical_print_image),
             )

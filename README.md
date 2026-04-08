@@ -15,7 +15,7 @@ The project is designed around a small reusable printing core, device-specific d
 
 ## Current Status
 
-InkOtter is in early development, but it already has a working first device driver:
+InkOtter `1.0.0` ships with a complete first production-ready driver:
 
 - `Katasymbol E10`
 
@@ -27,6 +27,17 @@ The current implementation supports:
 - actual-size SVG printing
 - a minimal CLI
 - a first Qt desktop GUI
+
+## Print Model
+
+InkOtter now uses a deliberately explicit print model:
+
+- internal image data stays free of printer-specific outer margins
+- preview-visible media margins come from the selected printer profile
+- printer/protocol margins are applied only in the printer-ready / `btbuf` path
+
+That keeps preview and print consistent without baking hardware-specific edge
+offsets into the internal image geometry.
 
 ## Installation
 
@@ -177,6 +188,10 @@ For contribution workflow and driver contribution guidance, see [CONTRIBUTING.md
 ## Known Scope
 
 The first supported device family uses a verified T15-like image path and grouped `AA BB` transfers for wide labels.
+
+Preview media margins and printer/protocol margins are modeled separately on
+purpose. If a future printer needs different physical edge distances, the
+profile should change those values instead of shifting the internal artwork.
 
 Large dark filled areas may still show hardware-specific banding or stripe artifacts even when the generated raster data is correct. That is currently considered a printer-side behavior, not necessarily a software bug.
 

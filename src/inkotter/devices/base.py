@@ -46,6 +46,10 @@ class RasterProfile:
     final_page_extra_right_margin_px: int = 0
     physical_left_cut_margin_px: int = 0
     physical_top_inset_px: int = 0
+    material_margin_left_px: int = 0
+    material_margin_right_px: int = 0
+    material_margin_top_px: int = 0
+    material_margin_bottom_px: int = 0
     actual_size_svg_right_bleed_px: int = 0
     fit_to_label_print_x_offset_px: int = 0
     fit_to_label_svg_print_x_offset_px: int = 0
@@ -55,6 +59,18 @@ class RasterProfile:
 
     def visible_area_top_inset_px(self) -> int:
         return max(0, self.physical_top_inset_px)
+
+    def preview_margin_left_px(self) -> int:
+        return max(0, self.material_margin_left_px)
+
+    def preview_margin_right_px(self) -> int:
+        return max(0, self.material_margin_right_px)
+
+    def preview_margin_top_px(self) -> int:
+        return max(0, self.material_margin_top_px)
+
+    def preview_margin_bottom_px(self) -> int:
+        return max(0, self.material_margin_bottom_px)
 
     def actual_size_svg_bleed_px(self) -> int:
         return max(0, self.actual_size_svg_right_bleed_px)
@@ -75,7 +91,9 @@ class RasterProfile:
 
     def protocol_right_margin_px(self, *, is_final: bool, total_pages: int) -> int:
         right_margin = self.right_margin
-        if total_pages > 1 and is_final:
+        if total_pages == 1:
+            right_margin += self.single_page_extra_right_margin_px
+        elif is_final:
             right_margin += self.final_page_extra_right_margin_px
         return right_margin
 

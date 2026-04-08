@@ -101,6 +101,7 @@ For the first kernel step, the device layer should already own facts such as:
 - `btbuf` data offset
 - single-page and multi-page width semantics
 - visible-area facts such as top inset and left cut margin
+- preview/media margins for user-visible strip rendering
 - printer-ready output offsets
 - protocol page margins
 - Bluetooth discovery hints
@@ -109,6 +110,12 @@ For the first kernel step, the device layer should already own facts such as:
 The current `RasterProfile` still contains these effect classes in one profile
 object, but call sites should access them through explicit helper methods so the
 meaning stays visible in code.
+
+Current rule of thumb:
+
+- internal canvas geometry should stay printer-agnostic
+- preview-only outer whitespace should come from profile media-margin values
+- printer/protocol compensation should happen in the printer-ready / `btbuf` path
 
 ## Canonical Planning Flow
 

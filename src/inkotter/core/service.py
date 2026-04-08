@@ -69,6 +69,7 @@ class PreviewImages:
     graphic_image: Image.Image
     physical_print_image: Image.Image
     strip_width_px: int
+    strip_height_px: int
     right_margin_px: int
 
 
@@ -235,10 +236,19 @@ def summarize_print_job(job: PreparedPrintJob) -> PrintJobSummary:
 
 
 def _preview_right_margin_px(job: PreparedPrintJob) -> int:
-    # The protocol right-margin fields influence page materialization, but they
-    # do not map 1:1 to a visibly wider finished label strip. For the physical
-    # preview we keep the same canvas as the print path.
-    return 0
+    return job.device.raster.preview_margin_right_px()
+
+
+def _preview_left_margin_px(job: PreparedPrintJob) -> int:
+    return job.device.raster.preview_margin_left_px()
+
+
+def _preview_top_margin_px(job: PreparedPrintJob) -> int:
+    return job.device.raster.preview_margin_top_px()
+
+
+def _preview_bottom_margin_px(job: PreparedPrintJob) -> int:
+    return job.device.raster.preview_margin_bottom_px()
 
 
 def _visible_preview_canvas(image: Image.Image, top_inset_px: int) -> Image.Image:
@@ -277,21 +287,24 @@ def _build_visible_preview_surface(
 def _materialize_preview_strip(
     surface: VisiblePreviewSurface,
     *,
+    left_margin_px: int,
+    top_margin_px: int,
     total_width_px: int,
-    canvas_height_px: int,
+    total_height_px: int,
 ) -> Image.Image:
-    strip = Image.new("L", (total_width_px, canvas_height_px), color=255)
-    strip.paste(surface.image, (0, 0))
+    strip = Image.new("L", (total_width_px, total_height_px), color=255)
+    strip.paste(surface.image, (left_margin_px, top_margin_px))
     return strip
 
 
 def build_preview_images(job: PreparedPrintJob) -> PreviewImages:
     raster = job.device.raster
+    left_margin_px = _preview_left_margin_px(job)
     right_margin_px = _preview_right_margin_px(job)
+    top_margin_px = _preview_top_margin_px(job)
+    bottom_margin_px = _preview_bottom_margin_px(job)
     left_cut_margin_px = raster.visible_area_left_cut_margin_px()
-    total_width_px = max(1, job.printer_ready_canvas.plan.canvas.width_px - left_cut_margin_px + right_margin_px)
     top_inset_px = raster.visible_area_top_inset_px()
-    canvas_height_px = job.printer_ready_canvas.plan.canvas.height_px
 
     visible_graphic = _build_visible_preview_surface(
         job.preview_canvas.grayscale_image,
@@ -303,21 +316,34 @@ def build_preview_images(job: PreparedPrintJob) -> PreviewImages:
         top_inset_px=top_inset_px,
         left_cut_margin_px=left_cut_margin_px,
     )
+    total_width_px = max(
+        1,
+        left_margin_px + visible_physical_print.width_px + right_margin_px,
+    )
+    total_height_px = max(
+        1,
+        top_margin_px + visible_physical_print.height_px + bottom_margin_px,
+    )
 
     graphic = _materialize_preview_strip(
         visible_graphic,
+        left_margin_px=left_margin_px,
+        top_margin_px=top_margin_px,
         total_width_px=total_width_px,
-        canvas_height_px=canvas_height_px,
+        total_height_px=total_height_px,
     )
     physical = _materialize_preview_strip(
         visible_physical_print,
+        left_margin_px=left_margin_px,
+        top_margin_px=top_margin_px,
         total_width_px=total_width_px,
-        canvas_height_px=canvas_height_px,
+        total_height_px=total_height_px,
     )
     return PreviewImages(
         graphic_image=graphic,
         physical_print_image=physical,
         strip_width_px=total_width_px,
+        strip_height_px=total_height_px,
         right_margin_px=right_margin_px,
     )
 

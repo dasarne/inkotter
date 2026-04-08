@@ -29,6 +29,23 @@ def _crop_left_margin(image: Image.Image, left_cut_margin_px: int) -> Image.Imag
     return grayscale.crop((left, 0, grayscale.width, grayscale.height))
 
 
+def _materialize_strip(
+    image: Image.Image,
+    *,
+    left_margin_px: int,
+    right_margin_px: int,
+    top_margin_px: int,
+    bottom_margin_px: int,
+) -> Image.Image:
+    strip = Image.new(
+        "L",
+        (left_margin_px + image.width + right_margin_px, top_margin_px + image.height + bottom_margin_px),
+        color=255,
+    )
+    strip.paste(image, (left_margin_px, top_margin_px))
+    return strip
+
+
 def _non_white_bbox(image: Image.Image):
     return ImageChops.invert(image.convert("L")).getbbox()
 
@@ -79,6 +96,25 @@ class PrintPipelineTests(unittest.TestCase):
                         expected_physical,
                         job.device.raster.visible_area_left_cut_margin_px(),
                     )
+                    expected_left_margin = job.device.raster.protocol_left_margin_px(0)
+                    expected_right_margin = job.device.raster.preview_margin_right_px()
+                    expected_top_margin = job.device.raster.preview_margin_top_px()
+                    expected_bottom_margin = job.device.raster.preview_margin_bottom_px()
+                    expected_left_margin = job.device.raster.preview_margin_left_px()
+                    expected_graphic = _materialize_strip(
+                        expected_graphic,
+                        left_margin_px=expected_left_margin,
+                        right_margin_px=expected_right_margin,
+                        top_margin_px=expected_top_margin,
+                        bottom_margin_px=expected_bottom_margin,
+                    )
+                    expected_physical = _materialize_strip(
+                        expected_physical,
+                        left_margin_px=expected_left_margin,
+                        right_margin_px=expected_right_margin,
+                        top_margin_px=expected_top_margin,
+                        bottom_margin_px=expected_bottom_margin,
+                    )
 
                     self.assertEqual(previews.graphic_image.size, previews.physical_print_image.size)
                     self.assertEqual(previews.graphic_image.tobytes(), expected_graphic.tobytes())
@@ -88,7 +124,7 @@ class PrintPipelineTests(unittest.TestCase):
                         previews.physical_print_image.tobytes(),
                     )
 
-    def test_physical_preview_tracks_printer_ready_offset_instead_of_preview_canvas(self) -> None:
+    def test_physical_preview_uses_same_internal_placement_as_preview_canvas(self) -> None:
         for suffix in ("png", "svg"):
             with self.subTest(document_type=suffix):
                 with tempfile.TemporaryDirectory() as tmpdir:
@@ -96,16 +132,24 @@ class PrintPipelineTests(unittest.TestCase):
                     job = prepare_print_job(document_path, KATASYMBOL_E10_PROFILE)
                     previews = build_preview_images(job)
 
-                    self.assertNotEqual(job.preview_canvas.plan.placement.x_px, job.printer_ready_canvas.plan.placement.x_px)
+                    self.assertEqual(job.preview_canvas.plan.placement.x_px, job.printer_ready_canvas.plan.placement.x_px)
                     self.assertEqual(
                         _non_white_bbox(previews.physical_print_image),
-                        _non_white_bbox(_crop_left_margin(
-                            _visible_image(
-                                job.printer_ready_canvas.monochrome_image,
-                                job.device.raster.visible_area_top_inset_px(),
-                            ),
-                            job.device.raster.visible_area_left_cut_margin_px(),
-                        )),
+                        _non_white_bbox(
+                            _materialize_strip(
+                                _crop_left_margin(
+                                    _visible_image(
+                                        job.printer_ready_canvas.monochrome_image,
+                                        job.device.raster.visible_area_top_inset_px(),
+                                    ),
+                                    job.device.raster.visible_area_left_cut_margin_px(),
+                                ),
+                                left_margin_px=job.device.raster.preview_margin_left_px(),
+                                right_margin_px=job.device.raster.preview_margin_right_px(),
+                                top_margin_px=job.device.raster.preview_margin_top_px(),
+                                bottom_margin_px=job.device.raster.preview_margin_bottom_px(),
+                            )
+                        ),
                     )
 
     def test_btbuf_payload_reconstructs_exact_printer_ready_monochrome_canvas(self) -> None:
@@ -121,6 +165,10 @@ class PrintPipelineTests(unittest.TestCase):
                     reconstructed = _reconstruct_monochrome_from_btbuf(job)
                     self.assertEqual(reconstructed.tobytes(), job.printer_ready_canvas.monochrome_image.tobytes())
                     self.assertEqual(job.btbuf_job.pages[0].btbuf[8:10], b"\x00\x00")
+                    self.assertEqual(
+                        int.from_bytes(job.btbuf_job.pages[0].btbuf[10:12], "little"),
+                        KATASYMBOL_E10_PROFILE.raster.protocol_right_margin_px(is_final=True, total_pages=1),
+                    )
 
     def test_single_page_printer_ready_content_is_horizontally_balanced_in_visible_area(self) -> None:
         for suffix in ("png",):
@@ -134,7 +182,7 @@ class PrintPipelineTests(unittest.TestCase):
                     right_margin = job.preview_canvas.plan.canvas.width_px - (placement.x_px + placement.width_px)
                     self.assertEqual(left_margin, right_margin)
 
-    def test_svg_fit_to_label_uses_device_specific_print_offset(self) -> None:
+    def test_svg_fit_to_label_does_not_shift_printer_ready_canvas(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             document_path = self._create_fixture(Path(tmpdir), "svg")
             job = prepare_print_job(document_path, KATASYMBOL_E10_PROFILE)
@@ -144,7 +192,7 @@ class PrintPipelineTests(unittest.TestCase):
                 + KATASYMBOL_E10_PROFILE.raster.fit_to_label_output_x_offset_px(DocumentFormat.SVG),
             )
 
-    def test_raster_fit_to_label_uses_device_print_offset(self) -> None:
+    def test_raster_fit_to_label_does_not_shift_printer_ready_canvas(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             document_path = self._create_fixture(Path(tmpdir), "png")
             job = prepare_print_job(document_path, KATASYMBOL_E10_PROFILE)
@@ -161,10 +209,15 @@ class PrintPipelineTests(unittest.TestCase):
         self.assertEqual(raster.actual_size_svg_bleed_px(), 12)
         self.assertEqual(raster.single_page_visible_width_px(DocumentFormat.SVG), raster.page_width_px)
         self.assertEqual(raster.single_page_visible_width_px(DocumentFormat.PNG), raster.page_width_px - 32)
-        self.assertEqual(raster.fit_to_label_output_x_offset_px(DocumentFormat.PNG), -4)
-        self.assertEqual(raster.fit_to_label_output_x_offset_px(DocumentFormat.SVG), -8)
+        self.assertEqual(raster.fit_to_label_output_x_offset_px(DocumentFormat.PNG), 0)
+        self.assertEqual(raster.fit_to_label_output_x_offset_px(DocumentFormat.SVG), 0)
+        self.assertEqual(raster.preview_margin_left_px(), 37)
+        self.assertEqual(raster.preview_margin_right_px(), 37)
+        self.assertEqual(raster.preview_margin_top_px(), 14)
+        self.assertEqual(raster.preview_margin_bottom_px(), 14)
         self.assertEqual(raster.protocol_left_margin_px(0), 0)
         self.assertEqual(raster.protocol_left_margin_px(1), 0)
+        self.assertEqual(raster.protocol_right_margin_px(is_final=True, total_pages=1), 33)
         self.assertEqual(raster.protocol_right_margin_px(is_final=False, total_pages=2), 1)
         self.assertEqual(raster.protocol_right_margin_px(is_final=True, total_pages=2), 33)
 
