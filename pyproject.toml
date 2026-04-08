@@ -4,13 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "inkotter"
-version = "1.0.0"
+version = "1.0.1"
 description = "Open printing for closed devices."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "Pillow>=10.0",
   "CairoSVG>=2.7",
+]
+
+[project.optional-dependencies]
+gui = [
   "PySide6>=6.7",
 ]
 

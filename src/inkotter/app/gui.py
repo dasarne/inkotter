@@ -45,7 +45,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - import surface
     if exc.name == "PySide6":
         raise SystemExit(
             "PySide6 is not installed in this Python environment. "
-            "Activate the project venv and run: pip install -e . "
+            "Activate the project venv and run: pip install -e .[gui] "
             "or install the GUI dependency directly with: pip install PySide6"
         ) from exc
     raise
@@ -60,6 +60,14 @@ from inkotter.core import (
 )
 from inkotter.devices import KATASYMBOL_E10_PROFILE
 from inkotter.devices.base import first_matching_name
+from inkotter.transport.errors import (
+    REASON_CONNECTION_REFUSED,
+    REASON_HOST_DOWN,
+    REASON_NETWORK_UNREACHABLE,
+    REASON_NO_ROUTE,
+    REASON_TIMEOUT,
+    classify_transport_error_message,
+)
 from inkotter.transport import auto_select_device, list_visible_devices, send_packets
 
 
@@ -967,6 +975,20 @@ class InkOtterWindow(QMainWindow):
         self._update_status(message)
         QMessageBox.information(self, title, message)
 
+    def _humanize_print_error_message(self, message: str) -> str:
+        reason, details = classify_transport_error_message(message)
+        if reason == REASON_TIMEOUT:
+            return self._t("error.printer_unreachable_timeout", details=details)
+        if reason == REASON_NO_ROUTE:
+            return self._t("error.printer_unreachable_no_route", details=details)
+        if reason == REASON_CONNECTION_REFUSED:
+            return self._t("error.printer_unreachable_connection_refused", details=details)
+        if reason == REASON_NETWORK_UNREACHABLE:
+            return self._t("error.printer_unreachable_network", details=details)
+        if reason == REASON_HOST_DOWN:
+            return self._t("error.printer_unreachable_host_down", details=details)
+        return details
+
     def _choose_file(self) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(
             self,
@@ -1295,6 +1317,8 @@ class InkOtterWindow(QMainWindow):
         callbacks = self._task_callbacks.pop(task_id, None)
         if callbacks is None:
             return
+        if title == self._t("task.print_error"):
+            message = self._humanize_print_error_message(message)
         _on_success, on_failure = callbacks
         on_failure(title, message)
 

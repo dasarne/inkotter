@@ -15,7 +15,7 @@ The project is designed around a small reusable printing core, device-specific d
 
 ## Current Status
 
-InkOtter `1.0.0` ships with a complete first production-ready driver:
+InkOtter `1.0.1` ships with a complete first production-ready driver:
 
 - `Katasymbol E10`
 
@@ -53,6 +53,12 @@ pip install -U pip
 pip install -e .
 ```
 
+For GUI support, install the GUI extra:
+
+```bash
+pip install -e .[gui]
+```
+
 This installs two entry points:
 
 - `inkotter`
@@ -65,7 +71,10 @@ InkOtter currently depends on:
 - Python `3.11+`
 - `Pillow`
 - `CairoSVG`
-- `PySide6`
+
+Optional dependency:
+
+- `PySide6` (required for `inkotter-gui`)
 
 If `CairoSVG` is not available, SVG rendering can fall back to a local `inkscape` executable.
 

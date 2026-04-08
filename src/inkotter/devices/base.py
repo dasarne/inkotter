@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from inkotter.core.document import DocumentFormat
-
 
 @dataclass(frozen=True)
 class BluetoothDiscoveryHints:
@@ -75,14 +73,14 @@ class RasterProfile:
     def actual_size_svg_bleed_px(self) -> int:
         return max(0, self.actual_size_svg_right_bleed_px)
 
-    def fit_to_label_output_x_offset_px(self, document_format: DocumentFormat) -> int:
+    def fit_to_label_output_x_offset_px(self, document_format: object) -> int:
         offset_px = self.fit_to_label_print_x_offset_px
-        if document_format == DocumentFormat.SVG:
+        if _is_svg_format(document_format):
             offset_px += self.fit_to_label_svg_print_x_offset_px
         return offset_px
 
-    def single_page_visible_width_px(self, document_format: DocumentFormat) -> int:
-        if document_format == DocumentFormat.SVG:
+    def single_page_visible_width_px(self, document_format: object) -> int:
+        if _is_svg_format(document_format):
             return self.page_width_px
         return max(1, self.page_width_px - self.single_page_extra_right_margin_px)
 
@@ -133,3 +131,8 @@ def first_matching_name(profile: DeviceProfile, device_name: str) -> bool:
 
     device_name_l = device_name.lower()
     return any(pattern.lower() in device_name_l for pattern in profile.discovery.name_patterns)
+
+
+def _is_svg_format(document_format: object) -> bool:
+    value = getattr(document_format, "value", document_format)
+    return str(value).lower() == "svg"

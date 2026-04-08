@@ -7,7 +7,30 @@ import argparse
 from inkotter.core import prepare_print_job, summarize_print_job
 from inkotter.devices import KATASYMBOL_E10_PROFILE
 from inkotter.devices.base import first_matching_name
+from inkotter.transport.errors import (
+    REASON_CONNECTION_REFUSED,
+    REASON_HOST_DOWN,
+    REASON_NETWORK_UNREACHABLE,
+    REASON_NO_ROUTE,
+    REASON_TIMEOUT,
+    classify_transport_os_error,
+)
 from inkotter.transport import auto_select_device, list_visible_devices, send_packets
+
+
+def _humanize_transport_error(exc: OSError) -> str:
+    reason, details = classify_transport_os_error(exc)
+    if reason == REASON_TIMEOUT:
+        return f"Der Drucker ist nicht erreichbar. Ist er nicht eingeschaltet? ({details})"
+    if reason == REASON_NO_ROUTE:
+        return f"Der Drucker ist nicht erreichbar. Ist er eingeschaltet und in Reichweite? ({details})"
+    if reason == REASON_CONNECTION_REFUSED:
+        return f"Der Drucker lehnt die Verbindung ab. Ist er bereit und verbunden? ({details})"
+    if reason == REASON_NETWORK_UNREACHABLE:
+        return f"Bluetooth-Verbindung ist derzeit nicht erreichbar. Ist Bluetooth aktiviert? ({details})"
+    if reason == REASON_HOST_DOWN:
+        return f"Der Drucker antwortet nicht. Ist er eingeschaltet? ({details})"
+    return f"RFCOMM send failed: {details}"
 
 
 
@@ -75,7 +98,7 @@ def main() -> None:
     except PermissionError:
         raise SystemExit("RFCOMM open/connect was denied; retry as a user with Bluetooth access or with sudo")
     except OSError as exc:
-        raise SystemExit(f"RFCOMM send failed: {exc}") from exc
+        raise SystemExit(_humanize_transport_error(exc)) from exc
 
     print(f"Sent {len(events)} frame(s)")
 

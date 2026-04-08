@@ -50,6 +50,12 @@ InkOtter ships a local desktop installer helper:
 ./packaging/linux/install-local.sh
 ```
 
+Important:
+
+- run this command as the same desktop user who should see InkOtter in the launcher menu
+- do not run it as `root` unless you explicitly want installation into root's local profile
+- use `./packaging/linux/install-local.sh` (relative path), not `/packaging/linux/install-local.sh`
+
 That installs:
 
 - `~/.local/share/icons/hicolor/scalable/apps/inkotter.svg`
@@ -65,6 +71,32 @@ If KDE does not pick up the launcher immediately, refresh the application databa
 ```bash
 kbuildsycoca6
 ```
+
+If InkOtter still does not appear in your menu:
+
+1. Check whether the launcher was installed into root's profile by mistake:
+
+```bash
+ls -l /root/.local/share/applications/inkotter.desktop
+```
+
+2. Re-run the installer as your normal desktop user from the repository root:
+
+```bash
+cd /path/to/inkotter
+./packaging/linux/install-local.sh
+kbuildsycoca6
+```
+
+3. Verify the launcher file exists for your user:
+
+```bash
+ls -l ~/.local/share/applications/inkotter.desktop
+grep '^Exec=' ~/.local/share/applications/inkotter.desktop
+grep '^TryExec=' ~/.local/share/applications/inkotter.desktop
+```
+
+`Exec` and `TryExec` should both point to a valid executable (for example `.../.venv/bin/inkotter-gui`).
 
 ## Bluetooth Notes
 

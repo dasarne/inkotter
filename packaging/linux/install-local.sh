@@ -28,6 +28,7 @@ mkdir -p "$ICON_DST_DIR" "$DESKTOP_DST_DIR"
 cp "$ICON_SRC" "$ICON_DST_DIR/inkotter.svg"
 sed \
   -e "s|^Exec=.*$|Exec=$EXEC_PATH %F|" \
+  -e "s|^TryExec=.*$|TryExec=$EXEC_PATH|" \
   -e "s|^Icon=.*$|Icon=inkotter|" \
   "$DESKTOP_SRC" >"$DESKTOP_DST"
 
